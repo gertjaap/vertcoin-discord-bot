@@ -99,7 +99,7 @@ func main() {
 				if nick == "" {
 					nick = i.User.Username
 				}
-				discord.ChannelMessageSend(notificationChannelID, fmt.Sprintf("Found impostor %s#%s (username %s#%s) (id %s)", i.Nick, i.User.Discriminator, i.User.Username, i.User.Discriminator, i.User.ID))
+				discord.ChannelMessageSend(notificationChannelID, fmt.Sprintf("Found impostor %s#%s (username %s#%s)\n\nID: %s", i.Nick, i.User.Discriminator, i.User.Username, i.User.Discriminator, i.User.ID))
 			}
 		}()
 	})

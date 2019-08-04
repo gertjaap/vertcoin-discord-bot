@@ -173,6 +173,7 @@ type OfficialUser struct {
 	UserID            string
 	Discriminator     string
 	DiscriminatorOnly bool
+	NamesToCheck      []string
 }
 
 var officialUsers = []OfficialUser{}
@@ -231,7 +232,13 @@ func updateProtectedUsers() {
 		for _, m := range protectedMemberList {
 			discriminator := m.User.Discriminator
 			userID := m.User.ID
-			log.Printf("Adding user %s / %s (%s) to official user list\n", m.Nick, m.User.Username, userID)
+
+			namesToCheck := getAlikeNames(m.User.Username)
+			if m.Nick != "" {
+				namesToCheck = append(namesToCheck, getAlikeNames(m.Nick)...)
+			}
+
+			log.Printf("Adding user %s / %s (%s) and %d variations to official user list\n", m.Nick, m.User.Username, userID, len(namesToCheck))
 
 			newOfficialUsers = append(newOfficialUsers, OfficialUser{
 				Nick:              m.Nick,
@@ -239,6 +246,7 @@ func updateProtectedUsers() {
 				UserID:            userID,
 				Discriminator:     discriminator,
 				DiscriminatorOnly: false,
+				NamesToCheck:      namesToCheck,
 			})
 		}
 
@@ -246,7 +254,12 @@ func updateProtectedUsers() {
 
 			discriminator := m.User.Discriminator
 			userID := m.User.ID
-			log.Printf("Adding user %s / %s (%s) to official user list (discriminator match only)\n", m.Nick, m.User.Username, userID)
+			namesToCheck := getAlikeNames(m.User.Username)
+			if m.Nick != "" {
+				namesToCheck = append(namesToCheck, getAlikeNames(m.Nick)...)
+			}
+
+			log.Printf("Adding user %s / %s (%s) and %d variations to official user list (discriminator match only)\n", m.Nick, m.User.Username, userID, len(namesToCheck))
 
 			newOfficialUsers = append(newOfficialUsers, OfficialUser{
 				Nick:              m.Nick,
@@ -254,6 +267,7 @@ func updateProtectedUsers() {
 				UserID:            userID,
 				Discriminator:     discriminator,
 				DiscriminatorOnly: true,
+				NamesToCheck:      namesToCheck,
 			})
 		}
 
@@ -270,17 +284,14 @@ func updateProtectedUsers() {
 
 func scanMembers() {
 	for {
+		log.Printf("Scanning for impostors...")
 		for _, m := range memberList {
 			userID := m.User.ID
 
 			for _, o := range officialUsers {
-				namesToCheck := getAlikeNames(o.UserName)
-				if o.Nick != "" {
-					namesToCheck = append(namesToCheck, getAlikeNames(o.Nick)...)
-				}
 
 				nameMatch := false
-				for _, n := range namesToCheck {
+				for _, n := range o.NamesToCheck {
 					if strings.ToLower(m.Nick) == strings.ToLower(n) || strings.ToLower(m.User.Username) == strings.ToLower(n) {
 						log.Printf("User %s (%s#%s) matches official name %s (%s#%s)\n", m.Nick, m.User.Username, m.User.Discriminator, o.Nick, o.UserName, o.Discriminator)
 						nameMatch = true

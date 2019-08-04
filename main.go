@@ -237,7 +237,7 @@ func updateProtectedUsers() {
 			if m.Nick != "" {
 				namesToCheck = append(namesToCheck, getAlikeNames(m.Nick)...)
 			}
-
+			namesToCheck = Dedup(namesToCheck)
 			log.Printf("Adding user %s / %s (%s) and %d variations to official user list\n", m.Nick, m.User.Username, userID, len(namesToCheck))
 
 			newOfficialUsers = append(newOfficialUsers, OfficialUser{
@@ -258,6 +258,7 @@ func updateProtectedUsers() {
 			if m.Nick != "" {
 				namesToCheck = append(namesToCheck, getAlikeNames(m.Nick)...)
 			}
+			namesToCheck = Dedup(namesToCheck)
 
 			log.Printf("Adding user %s / %s (%s) and %d variations to official user list (discriminator match only)\n", m.Nick, m.User.Username, userID, len(namesToCheck))
 

@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"log"
+        "io"
 	"math/rand"
 	"os"
 	"os/signal"
@@ -39,6 +40,14 @@ type Kick struct {
 }
 
 func main() {
+	f, err := os.OpenFile("discord-bot.log", os.O_RDWR | os.O_CREATE | os.O_APPEND, 0666)
+	if err != nil {
+	    log.Fatalf("error opening file: %v", err)
+	}
+	defer f.Close()
+
+	log.SetOutput(io.MultiWriter(f, os.Stdout))
+
 	memberList = make([]*discordgo.Member, 0)
 	stopStatusRotation = make(chan bool)
 	stopScanMembers = make(chan bool)
@@ -146,7 +155,7 @@ func rotateStatus(discord *discordgo.Session, ready *discordgo.Ready) {
 		for {
 			err := discord.UpdateStatus(0, statuses[rand.Intn(len(statuses)-1)])
 			if err != nil {
-				fmt.Println("Error attempting to set my status")
+				log.Println("Error attempting to set my status")
 			}
 
 			select {
@@ -372,7 +381,7 @@ func scanMemberList(discord *discordgo.Session, ready *discordgo.Ready) {
 
 func errCheck(msg string, err error) {
 	if err != nil {
-		fmt.Printf("%s: %+v", msg, err)
+		log.Printf("%s: %+v", msg, err)
 		panic(err)
 	}
 }

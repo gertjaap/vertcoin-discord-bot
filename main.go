@@ -99,7 +99,8 @@ func main() {
 				if nick == "" {
 					nick = i.User.Username
 				}
-				discord.ChannelMessageSend(notificationChannelID, fmt.Sprintf("Found impostor %s#%s (username %s#%s)\n\nID: %s", i.Nick, i.User.Discriminator, i.User.Username, i.User.Discriminator, i.User.ID))
+				discord.ChannelMessageSend(notificationChannelID, fmt.Sprintf("Found impostor %s#%s (username %s#%s)", i.Nick, i.User.Discriminator, i.User.Username, i.User.Discriminator))
+				discord.ChannelMessageSend(notificationChannelID, i.User.ID)
 			}
 		}()
 	})
@@ -234,8 +235,10 @@ func updateProtectedUsers() {
 			userID := m.User.ID
 
 			namesToCheck := getAlikeNames(m.User.Username)
+			namesToCheck = append(namesToCheck, m.User.Username)
 			if m.Nick != "" {
 				namesToCheck = append(namesToCheck, getAlikeNames(m.Nick)...)
+				namesToCheck = append(namesToCheck, m.Nick)
 			}
 			namesToCheck = Dedup(namesToCheck)
 			log.Printf("Adding user %s / %s (%s) and %d variations to official user list\n", m.Nick, m.User.Username, userID, len(namesToCheck))

@@ -282,40 +282,42 @@ func updateProtectedUsers() {
 	}
 }
 
-func scanMembers() {
-	for {
-		log.Printf("Scanning for impostors...")
-		for _, m := range memberList {
-			userID := m.User.ID
+func scanForImpostors(m *discordgo.Member) {
+	userID := m.User.ID
+	log.Printf("Checking if %s#%s is an impostor\n", m.User.Username, m.User.Discriminator)
+	for _, o := range officialUsers {
 
-			for _, o := range officialUsers {
+		nameMatch := false
+		for _, n := range o.NamesToCheck {
+			if strings.ToLower(m.Nick) == strings.ToLower(n) || strings.ToLower(m.User.Username) == strings.ToLower(n) {
+				log.Printf("User %s (%s#%s) matches official name %s (%s#%s)\n", m.Nick, m.User.Username, m.User.Discriminator, o.Nick, o.UserName, o.Discriminator)
+				nameMatch = true
+				break
+			}
+		}
 
-				nameMatch := false
-				for _, n := range o.NamesToCheck {
-					if strings.ToLower(m.Nick) == strings.ToLower(n) || strings.ToLower(m.User.Username) == strings.ToLower(n) {
-						log.Printf("User %s (%s#%s) matches official name %s (%s#%s)\n", m.Nick, m.User.Username, m.User.Discriminator, o.Nick, o.UserName, o.Discriminator)
-						nameMatch = true
-						break
+		if nameMatch && userID != o.UserID {
+			if !o.DiscriminatorOnly || m.User.Discriminator == o.Discriminator {
+				alreadyNotified := false
+				for _, i := range notifiedImpostors {
+					if i == userID {
+						alreadyNotified = true
 					}
 				}
 
-				if nameMatch && userID != o.UserID {
-					if !o.DiscriminatorOnly || m.User.Discriminator == o.Discriminator {
-						alreadyNotified := false
-						for _, i := range notifiedImpostors {
-							if i == userID {
-								alreadyNotified = true
-							}
-						}
-
-						if !alreadyNotified {
-							impostorNotificationChannel <- m
-							notifiedImpostors = append(notifiedImpostors, userID)
-						}
-					}
+				if !alreadyNotified {
+					impostorNotificationChannel <- m
+					notifiedImpostors = append(notifiedImpostors, userID)
 				}
 			}
+		}
+	}
+}
 
+func scanMembers() {
+	for {
+		log.Printf("Scanning for failed captchas...")
+		for _, m := range memberList {
 			joined, _ := m.JoinedAt.Parse()
 			if joined.Before(time.Now().Add(time.Hour*-1)) && len(m.Roles) == 0 {
 				kickChannel <- Kick{Member: m, Reason: "Did not complete captcha within 60 minutes"}
@@ -325,7 +327,7 @@ func scanMembers() {
 		select {
 		case <-stopScanMembers:
 			return
-		case <-time.After(time.Second * 1):
+		case <-time.After(time.Minute * 1):
 		}
 	}
 
@@ -352,6 +354,8 @@ func addMember(discord *discordgo.Session, memberAdd *discordgo.GuildMemberAdd) 
 	memberList = append(memberList, memberAdd.Member)
 	memberListLock.Unlock()
 
+	scanForImpostors(memberAdd.Member)
+
 	log.Printf("Appended member %s (%s)\n", memberAdd.Member.User.Username, memberAdd.Member.User.ID)
 	log.Printf("We now have %d known members\n", len(memberList))
 }
@@ -367,6 +371,7 @@ func updateMember(discord *discordgo.Session, memberUpdate *discordgo.GuildMembe
 		memberList[updateIdx] = memberUpdate.Member
 		log.Printf("Updated member %s (%s)\n", memberUpdate.Member.User.Username, memberUpdate.Member.User.ID)
 	}
+	scanForImpostors(memberUpdate.Member)
 	log.Printf("We now have %d known members\n", len(memberList))
 }
 
@@ -395,9 +400,12 @@ func scanMemberList(discord *discordgo.Session, ready *discordgo.Ready) {
 	discord.AddHandler(removeMember)
 	discord.AddHandler(updateMember)
 
+	for _, m := range memberList {
+		scanForImpostors(m)
+	}
+
 	go updateProtectedUsers()
 	go scanMembers()
-
 }
 
 func errCheck(msg string, err error) {

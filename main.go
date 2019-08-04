@@ -2,8 +2,8 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"log"
-        "io"
 	"math/rand"
 	"os"
 	"os/signal"
@@ -40,9 +40,9 @@ type Kick struct {
 }
 
 func main() {
-	f, err := os.OpenFile("discord-bot.log", os.O_RDWR | os.O_CREATE | os.O_APPEND, 0666)
+	f, err := os.OpenFile("discord-bot.log", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
 	if err != nil {
-	    log.Fatalf("error opening file: %v", err)
+		log.Fatalf("error opening file: %v", err)
 	}
 	defer f.Close()
 
@@ -274,11 +274,21 @@ func scanMembers() {
 			userID := m.User.ID
 
 			for _, o := range officialUsers {
-				if ((o.Nick != "" && m.Nick == o.Nick) ||
-					(o.Nick != "" && m.User.Username == o.Nick) ||
-					(o.UserName == m.User.Username) ||
-					(o.UserName == m.Nick)) &&
-					userID != o.UserID {
+				namesToCheck := getAlikeNames(o.UserName)
+				if o.Nick != "" {
+					namesToCheck = append(namesToCheck, getAlikeNames(o.Nick)...)
+				}
+
+				nameMatch := false
+				for _, n := range namesToCheck {
+					if strings.ToLower(m.Nick) == strings.ToLower(n) || strings.ToLower(m.User.Username) == strings.ToLower(n) {
+						log.Printf("User %s (%s#%s) matches official name %s (%s#%s)\n", m.Nick, m.User.Username, m.User.Discriminator, o.Nick, o.UserName, o.Discriminator)
+						nameMatch = true
+						break
+					}
+				}
+
+				if nameMatch && userID != o.UserID {
 					if !o.DiscriminatorOnly || m.User.Discriminator == o.Discriminator {
 						alreadyNotified := false
 						for _, i := range notifiedImpostors {
